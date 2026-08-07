@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">LLM_Demo</string>
+    <string name="llm_chat_title">LLM Chat</string>
+</resources>
