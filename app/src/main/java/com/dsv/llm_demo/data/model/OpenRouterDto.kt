@@ -4,7 +4,8 @@ import com.google.gson.annotations.SerializedName
 
 data class ChatCompletionRequest(
     @SerializedName("model") val model: String,
-    @SerializedName("messages") val messages: List<ChatMessageDto>
+    @SerializedName("messages") val messages: List<ChatMessageDto>,
+    @SerializedName("stream") val stream: Boolean = true
 )
 
 data class ChatMessageDto(
@@ -12,10 +13,14 @@ data class ChatMessageDto(
     @SerializedName("content") val content: String
 )
 
-data class ChatCompletionResponse(
-    @SerializedName("choices") val choices: List<Choice>?
+data class ChatCompletionChunkResponse(
+    @SerializedName("choices") val choices: List<ChunkChoice>?
 )
 
-data class Choice(
-    @SerializedName("message") val message: ChatMessageDto?
+data class ChunkChoice(
+    @SerializedName("delta") val delta: ChunkDelta?
+)
+
+data class ChunkDelta(
+    @SerializedName("content") val content: String?
 )

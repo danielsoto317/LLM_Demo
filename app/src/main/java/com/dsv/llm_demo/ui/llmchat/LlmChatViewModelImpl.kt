@@ -9,8 +9,10 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.util.UUID
 import javax.inject.Inject
 
 @HiltViewModel
@@ -47,20 +49,33 @@ class LlmChatViewModelImpl @Inject constructor(
 
         viewModelScope.launch {
             val currentModel = _uiState.value.selectedModel
-            val result = repository.fetchLlmResponse(updatedMessages, currentModel)
+            val assistantMsgId = UUID.randomUUID().toString()
 
-            result.onSuccess { llmAnswer ->
-                val llmMsg = ChatMessage(text = llmAnswer, isFromUser = false)
-                _uiState.update {
-                    it.copy(messages = it.messages + llmMsg, isLoading = false)
+            repository.streamLlmResponse(updatedMessages, currentModel)
+                .catch { error ->
+                    val errorMsg = ChatMessage(text = "Error: ${error.message}", isFromUser = false)
+                    _uiState.update {
+                        it.copy(messages = it.messages + errorMsg, isLoading = false)
+                    }
                 }
-            }.onFailure { error ->
-                val errorMsg = ChatMessage(text = "Error: ${error.message}", isFromUser = false)
-                _uiState.update {
-                    it.copy(messages = it.messages + errorMsg, isLoading = false)
+                .collect { chunk ->
+                    _uiState.update { state ->
+                        val currentList = state.messages.toMutableList()
+                        val index = currentList.indexOfFirst { it.id == assistantMsgId }
+
+                        if (index != -1) {
+                            val existingMsg = currentList[index]
+                            currentList[index] = existingMsg.copy(text = existingMsg.text + chunk)
+                        } else {
+                            currentList.add(ChatMessage(id = assistantMsgId, text = chunk, isFromUser = false))
+                        }
+
+                        state.copy(
+                            messages = currentList,
+                            isLoading = false
+                        )
+                    }
                 }
-            }
         }
     }
-
 }

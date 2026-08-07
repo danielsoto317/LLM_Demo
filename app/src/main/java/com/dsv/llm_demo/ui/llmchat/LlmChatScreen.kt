@@ -29,11 +29,13 @@ fun LlmChatScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val listState = rememberLazyListState()
 
-    // Scroll to bottom when new messages arrive or when loading state starts
-    LaunchedEffect(uiState.messages.size, uiState.isLoading) {
-        val totalItems = uiState.messages.size + if (uiState.isLoading) 1 else 0
-        if (totalItems > 0) {
-            listState.animateScrollToItem(totalItems - 1)
+    // Track the growing text of the current message during streaming
+    val lastMessageText = uiState.messages.lastOrNull()?.text.orEmpty()
+
+    // Trigger scroll on new message count, loading state toggle, or streaming text updates
+    LaunchedEffect(uiState.messages.size, uiState.isLoading, lastMessageText) {
+        if (uiState.messages.isNotEmpty()) {
+            listState.animateScrollToItem(uiState.messages.size - 1)
         }
     }
 
