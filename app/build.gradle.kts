@@ -7,6 +7,7 @@ plugins {
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.ktlint)
     alias(libs.plugins.detekt)
+    jacoco
 }
 
 android {
@@ -45,6 +46,10 @@ android {
     }
 
     buildTypes {
+        debug {
+            enableUnitTestCoverage = true
+            enableAndroidTestCoverage = true
+        }
         release {
             isMinifyEnabled = false
             proguardFiles(
@@ -145,4 +150,64 @@ ktlint {
         exclude("**/generated/**")
         exclude("**/build/**")
     }
+}
+
+jacoco {
+    toolVersion = "0.8.11" // Stable Jacoco version
+}
+
+tasks.register<JacocoReport>("mergedCoverageReport") {
+    group = "Reporting"
+    description = "Generates a combined code coverage report for Unit and UI tests (com.dsv.llm_demo.ui package only)."
+
+    dependsOn("testDebugUnitTest", "createDebugCoverageReport")
+
+    reports {
+        xml.required.set(true)
+        html.required.set(true)
+    }
+
+    val fileFilter = listOf(
+        "**/R.class",
+        "**/R$*.class",
+        "**/BuildConfig.*",
+        "**/Manifest*.*",
+        "**/*Test*.*",
+        "android/**/*.*",
+        "**/*Mapper*.*",
+        "**/*\$ViewInjector*.*",
+        "**/*\$ViewBinder*.*",
+        "**/hilt_aggregated_deps/**",
+        "**/dagger/**",
+        "**/*Hilt*.*",
+        "**/*_Factory*.*",
+        "**/*_MembersInjector*.*",
+        "**/*_HiltModules*.*",
+        "**/*_Provide*Factory*.*"
+    )
+
+    val buildDir = project.layout.buildDirectory.get().asFile
+
+    classDirectories.setFrom(
+        fileTree("$buildDir/intermediates/built_in_kotlinc/debug/compileDebugKotlin/classes") {
+            include("com/dsv/llm_demo/ui/**")
+            exclude(fileFilter)
+        }
+    )
+
+    sourceDirectories.setFrom(
+        files(
+            "${project.projectDir}/src/main/java",
+            "${project.projectDir}/src/main/kotlin"
+        )
+    )
+
+    executionData.setFrom(
+        fileTree(buildDir) {
+            include(
+                "outputs/unit_test_code_coverage/debugUnitTest/testDebugUnitTest.exec",
+                "outputs/code_coverage/debugAndroidTest/connected/*/*.ec"
+            )
+        }
+    )
 }
