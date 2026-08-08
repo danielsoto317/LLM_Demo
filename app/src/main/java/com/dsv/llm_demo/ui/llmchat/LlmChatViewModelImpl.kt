@@ -3,7 +3,6 @@ package com.dsv.llm_demo.ui.llmchat
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.dsv.llm_demo.data.model.ChatMessage
-import com.dsv.llm_demo.data.model.LlmResponse
 import com.dsv.llm_demo.data.repository.LlmRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow

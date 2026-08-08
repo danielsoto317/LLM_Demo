@@ -1,7 +1,6 @@
 package com.dsv.llm_demo.ui.llmchat
 
 import com.dsv.llm_demo.data.model.ChatMessage
-import com.dsv.llm_demo.data.model.LlmResponse
 import kotlinx.coroutines.flow.StateFlow
 
 interface LlmChatViewModel {

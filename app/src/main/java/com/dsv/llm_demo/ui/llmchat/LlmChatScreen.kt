@@ -1,5 +1,6 @@
 package com.dsv.llm_demo.ui.llmchat
 
+import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -29,13 +30,17 @@ fun LlmChatScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val listState = rememberLazyListState()
 
-    // Track the growing text of the current message during streaming
+    // Track the text length of the last message
     val lastMessageText = uiState.messages.lastOrNull()?.text.orEmpty()
 
-    // Trigger scroll on new message count, loading state toggle, or streaming text updates
+    // Auto-scroll to the bottom of the last item
     LaunchedEffect(uiState.messages.size, uiState.isLoading, lastMessageText) {
-        if (uiState.messages.isNotEmpty()) {
-            listState.animateScrollToItem(uiState.messages.size - 1)
+        val totalItems = uiState.messages.size + if (uiState.isLoading) 1 else 0
+        if (totalItems > 0) {
+            listState.scrollToItem(
+                index = totalItems - 1,
+                scrollOffset = 100_000
+            )
         }
     }
 
