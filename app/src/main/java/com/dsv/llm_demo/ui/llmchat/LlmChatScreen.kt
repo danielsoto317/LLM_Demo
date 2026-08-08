@@ -17,6 +17,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.dsv.llm_demo.data.model.ChatMessage
@@ -30,10 +32,8 @@ fun LlmChatScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val listState = rememberLazyListState()
 
-    // Track the text length of the last message
     val lastMessageText = uiState.messages.lastOrNull()?.text.orEmpty()
 
-    // Auto-scroll to the bottom of the last item
     LaunchedEffect(uiState.messages.size, uiState.isLoading, lastMessageText) {
         val totalItems = uiState.messages.size + if (uiState.isLoading) 1 else 0
         if (totalItems > 0) {
@@ -116,7 +116,6 @@ fun LlmChatScreen(
                 ChatMessageBubble(message = message)
             }
 
-            // Display loading bubble when waiting for the LLM response
             if (uiState.isLoading) {
                 item(key = "loading_indicator") {
                     LlmLoadingBubble()
@@ -179,7 +178,10 @@ fun ChatMessageBubble(
             color = bubbleColor,
             shape = bubbleShape,
             shadowElevation = 1.dp,
-            modifier = Modifier.widthIn(max = 280.dp)
+            modifier = Modifier
+                .widthIn(max = 280.dp)
+                // Exposes message text to Compose semantics tree
+                .semantics { contentDescription = message.text }
         ) {
             MarkdownText(
                 markdown = message.text,
