@@ -6,6 +6,7 @@ import kotlinx.coroutines.flow.Flow
 interface LlmRepository {
     fun streamLlmResponse(
         history: List<ChatMessage>,
-        model: String
+        model: String,
+        reasoningEffort: String? = null
     ): Flow<String>
 }

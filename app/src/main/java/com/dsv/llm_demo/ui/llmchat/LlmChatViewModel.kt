@@ -8,11 +8,15 @@ interface LlmChatViewModel {
 
     fun onInputTextChanged(newText: String)
     fun sendMessage()
+
+    fun onModelSelected(newModelId: String)
+    fun onReasoningEffortSelected(effort: String)
 }
 
 data class LlmChatUiState(
     val messages: List<ChatMessage> = emptyList(),
     val inputText: String = "",
     val isLoading: Boolean = false,
-    val selectedModel: String = "openai/gpt-4o-mini"
+    val selectedModel: String = "openai/gpt-4o-mini",
+    val selectedReasoningEffort: String = "none"
 )

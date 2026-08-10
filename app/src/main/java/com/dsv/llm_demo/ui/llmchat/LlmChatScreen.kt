@@ -9,11 +9,15 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
+import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.SmartToy
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -85,6 +89,16 @@ fun LlmChatScreen(
                             containerColor = Color.Transparent
                         )
                     )
+
+                    // Configuration bar for LLM model and reasoning effort
+                    ModelAndEffortSelectors(
+                        selectedModel = uiState.selectedModel,
+                        selectedEffort = uiState.selectedReasoningEffort,
+                        isLoading = uiState.isLoading,
+                        onModelSelected = viewModel::onModelSelected,
+                        onEffortSelected = viewModel::onReasoningEffortSelected
+                    )
+
                     HorizontalDivider(
                         color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f)
                     )
@@ -119,6 +133,84 @@ fun LlmChatScreen(
             if (uiState.isLoading) {
                 item(key = "loading_indicator") {
                     LlmLoadingBubble()
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun ModelAndEffortSelectors(
+    selectedModel: String,
+    selectedEffort: String,
+    isLoading: Boolean,
+    onModelSelected: (String) -> Unit,
+    onEffortSelected: (String) -> Unit
+) {
+    var expandedModelMenu by remember { mutableStateOf(false) }
+    var expandedEffortMenu by remember { mutableStateOf(false) }
+
+    val availableModels = listOf(
+        "openai/gpt-4o-mini",
+        "openai/gpt-4o",
+        "openai/o3-mini",
+        "anthropic/claude-4.5-opus",
+        "google/gemini-2.5-flash-lite"
+    )
+
+    val effortOptions = listOf("none", "low", "medium", "high")
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 4.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        // Model Selection Dropdown
+        Box {
+            AssistChip(
+                onClick = { if (!isLoading) expandedModelMenu = true },
+                label = { Text(selectedModel.split("/").lastOrNull() ?: selectedModel) },
+                trailingIcon = { Icon(Icons.Default.ArrowDropDown, contentDescription = null) },
+                enabled = !isLoading
+            )
+            DropdownMenu(
+                expanded = expandedModelMenu,
+                onDismissRequest = { expandedModelMenu = false }
+            ) {
+                availableModels.forEach { model ->
+                    DropdownMenuItem(
+                        text = { Text(model) },
+                        onClick = {
+                            onModelSelected(model)
+                            expandedModelMenu = false
+                        }
+                    )
+                }
+            }
+        }
+
+        // Effort Selection Dropdown
+        Box {
+            AssistChip(
+                onClick = { if (!isLoading) expandedEffortMenu = true },
+                label = { Text("Effort: ${selectedEffort.replaceFirstChar { it.uppercase() }}") },
+                trailingIcon = { Icon(Icons.Default.ArrowDropDown, contentDescription = null) },
+                enabled = !isLoading
+            )
+            DropdownMenu(
+                expanded = expandedEffortMenu,
+                onDismissRequest = { expandedEffortMenu = false }
+            ) {
+                effortOptions.forEach { effort ->
+                    DropdownMenuItem(
+                        text = { Text(effort.replaceFirstChar { it.uppercase() }) },
+                        onClick = {
+                            onEffortSelected(effort)
+                            expandedEffortMenu = false
+                        }
+                    )
                 }
             }
         }

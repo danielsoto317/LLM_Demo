@@ -5,7 +5,8 @@ import com.google.gson.annotations.SerializedName
 data class ChatCompletionRequest(
     @SerializedName("model") val model: String,
     @SerializedName("messages") val messages: List<ChatMessageDto>,
-    @SerializedName("stream") val stream: Boolean = true
+    @SerializedName("stream") val stream: Boolean = true,
+    @SerializedName("reasoning") val reasoningEffort: String? = null
 )
 
 data class ChatMessageDto(

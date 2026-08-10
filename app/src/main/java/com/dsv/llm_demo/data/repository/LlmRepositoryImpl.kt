@@ -20,7 +20,8 @@ class LlmRepositoryImpl @Inject constructor(
 
     override fun streamLlmResponse(
         history: List<ChatMessage>,
-        model: String
+        model: String,
+        reasoningEffort: String?
     ): Flow<String> = flow {
         val dtoList = history.map { msg ->
             ChatMessageDto(
@@ -29,10 +30,19 @@ class LlmRepositoryImpl @Inject constructor(
             )
         }
 
+        // Only pass reasoning_effort if model supports it (e.g. OpenAI o1 / o3 series)
+        val isReasoningModel = model.contains("o1") || model.contains("o3")
+        val validReasoningEffort = if (isReasoningModel && reasoningEffort != "none") {
+            reasoningEffort
+        } else {
+            null
+        }
+
         val request = ChatCompletionRequest(
             model = model,
             messages = dtoList,
-            stream = true
+            stream = true,
+            reasoningEffort = validReasoningEffort
         )
 
         val responseBody = llmService.streamMessage(request)

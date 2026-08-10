@@ -27,8 +27,12 @@ class LlmChatViewModelImpl @Inject constructor(
         _uiState.update { it.copy(inputText = newText) }
     }
 
-    fun onModelSelected(newModelId: String) {
+    override fun onModelSelected(newModelId: String) {
         _uiState.update { it.copy(selectedModel = newModelId) }
+    }
+
+    override fun onReasoningEffortSelected(effort: String) {
+        _uiState.update { it.copy(selectedReasoningEffort = effort) }
     }
 
     override fun sendMessage() {
