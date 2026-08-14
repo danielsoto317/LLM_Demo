@@ -18,19 +18,31 @@ class LlmRepositoryImpl @Inject constructor(
 
     private val gson = Gson()
 
+    private val systemInstruction = ChatMessageDto(
+        role = "system",
+        content = """
+            You are a helpful AI assistant. 
+            When requested to build web apps, interactive tools, or games (such as Tic-Tac-Toe), always provide self-contained, working HTML/JS code wrapped in standard ```html or ```js code blocks so that the app can display an interactive preview to the user.
+        """.trimIndent()
+    )
+
     override fun streamLlmResponse(
         history: List<ChatMessage>,
         model: String,
         reasoningEffort: String?
     ): Flow<String> = flow {
-        val dtoList = history.map { msg ->
+        // Map user/assistant chat history
+        val userHistoryDtos = history.map { msg ->
             ChatMessageDto(
                 role = if (msg.isFromUser) "user" else "assistant",
                 content = msg.text
             )
         }
 
-        // Only pass reasoning_effort if model supports it (e.g. OpenAI o1 / o3 series)
+        // Prepend system message at the start of the list
+        val fullMessagesList = listOf(systemInstruction) + userHistoryDtos
+
+        // Reasoning model check
         val isReasoningModel = model.contains("o1") || model.contains("o3")
         val validReasoningEffort = if (isReasoningModel && reasoningEffort != "none") {
             reasoningEffort
@@ -40,20 +52,18 @@ class LlmRepositoryImpl @Inject constructor(
 
         val request = ChatCompletionRequest(
             model = model,
-            messages = dtoList,
+            messages = fullMessagesList, // Send updated list
             stream = true,
             reasoningEffort = validReasoningEffort
         )
 
         val responseBody = llmService.streamMessage(request)
         val reader = responseBody.charStream().buffered()
-
         reader.useLines { lines ->
             lines.forEach { line ->
                 if (line.startsWith("data: ")) {
                     val data = line.removePrefix("data: ").trim()
                     if (data == "[DONE]") return@forEach
-
                     runCatching {
                         val chunk = gson.fromJson(data, ChatCompletionChunkResponse::class.java)
                         val textDelta = chunk.choices?.firstOrNull()?.delta?.content

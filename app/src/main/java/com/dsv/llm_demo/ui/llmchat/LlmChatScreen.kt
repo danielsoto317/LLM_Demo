@@ -10,6 +10,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.SmartToy
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -26,6 +27,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.dsv.llm_demo.data.model.ChatMessage
+import com.dsv.llm_demo.util.CodeExtractor
 import dev.jeziellago.compose.markdowntext.MarkdownText
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -46,6 +48,17 @@ fun LlmChatScreen(
                 scrollOffset = 100_000
             )
         }
+    }
+
+    // 1. Use explicit state variable instead of delegation 'by'
+    val previewCodeState = remember { mutableStateOf<String?>(null) }
+
+    // 2. Read state using .value
+    previewCodeState.value?.let { code ->
+        CodePreviewDialog(
+            htmlCode = code,
+            onDismissRequest = { previewCodeState.value = null }
+        )
     }
 
     Scaffold(
@@ -127,7 +140,9 @@ fun LlmChatScreen(
                 items = uiState.messages,
                 key = { message -> message.id }
             ) { message ->
-                ChatMessageBubble(message = message)
+                ChatMessageBubble(
+                    message = message,
+                    onOpenPreview = { code -> previewCodeState.value = code })
             }
 
             if (uiState.isLoading) {
@@ -220,7 +235,8 @@ fun ModelAndEffortSelectors(
 @Composable
 fun ChatMessageBubble(
     message: ChatMessage,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onOpenPreview: (String) -> Unit = {}
 ) {
     val isUser = message.isFromUser
 
@@ -240,6 +256,10 @@ fun ChatMessageBubble(
         RoundedCornerShape(topStart = 18.dp, topEnd = 18.dp, bottomStart = 18.dp, bottomEnd = 4.dp)
     } else {
         RoundedCornerShape(topStart = 18.dp, topEnd = 18.dp, bottomStart = 4.dp, bottomEnd = 18.dp)
+    }
+
+    val runnableCode = remember(message.text) {
+        if (!isUser) CodeExtractor.extractWebCode(message.text) else null
     }
 
     Row(
@@ -266,22 +286,41 @@ fun ChatMessageBubble(
             }
         }
 
-        Surface(
-            color = bubbleColor,
-            shape = bubbleShape,
-            shadowElevation = 1.dp,
-            modifier = Modifier
-                .widthIn(max = 280.dp)
-                // Exposes message text to Compose semantics tree
-                .semantics { contentDescription = message.text }
-        ) {
-            MarkdownText(
-                markdown = message.text,
-                style = MaterialTheme.typography.bodyMedium.copy(
-                    color = contentColor
-                ),
-                modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp)
-            )
+        Column(horizontalAlignment = if (isUser) Alignment.End else Alignment.Start) {
+            Surface(
+                color = bubbleColor,
+                shape = bubbleShape,
+                shadowElevation = 1.dp,
+                modifier = Modifier
+                    .widthIn(max = 280.dp)
+                    .semantics { contentDescription = message.text }
+            ) {
+                MarkdownText(
+                    markdown = message.text,
+                    style = MaterialTheme.typography.bodyMedium.copy(color = contentColor),
+                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp)
+                )
+            }
+
+            // Show "Interactive Preview" Button if code is present
+            runnableCode?.let { code ->
+                Spacer(modifier = Modifier.height(6.dp))
+                ElevatedButton(
+                    onClick = { onOpenPreview(code) },
+                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.PlayArrow,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = "Open Interactive App",
+                        style = MaterialTheme.typography.labelMedium
+                    )
+                }
+            }
         }
     }
 }

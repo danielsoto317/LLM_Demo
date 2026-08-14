@@ -80,6 +80,52 @@ class LlmChatScreenTest {
         verify(exactly = 1) { viewModel.sendMessage() }
     }
 
+    @Test
+    fun displaysPreviewButtonWhenAssistantMessageContainsCode() {
+        val messageWithCode = ChatMessage(
+            text = """
+                Here is your game:
+                ```html
+                <h1>Tic Tac Toe</h1>
+                ```
+            """.trimIndent(),
+            isFromUser = false
+        )
+        val viewModel = mockViewModel(messages = listOf(messageWithCode))
+
+        setScreenContent(viewModel)
+
+        // Verify the interactive app button appears
+        composeTestRule.onNodeWithText("Open Interactive App").assertIsDisplayed()
+    }
+
+    @Test
+    fun clickingPreviewButtonOpensDialogAndCanBeDismissed() {
+        val messageWithCode = ChatMessage(
+            text = """
+                ```js
+                console.log("Hello!");
+                ```
+            """.trimIndent(),
+            isFromUser = false
+        )
+        val viewModel = mockViewModel(messages = listOf(messageWithCode))
+
+        setScreenContent(viewModel)
+
+        // 1. Click "Open Interactive App" button
+        composeTestRule.onNodeWithText("Open Interactive App").performClick()
+
+        // 2. Verify the Preview Dialog TopBar is displayed
+        composeTestRule.onNodeWithText("Interactive Preview").assertIsDisplayed()
+
+        // 3. Click close button on the dialog
+        composeTestRule.onNodeWithContentDescription("Close Preview").performClick()
+
+        // 4. Verify the dialog is dismissed
+        composeTestRule.onNodeWithText("Interactive Preview").assertDoesNotExist()
+    }
+
     private fun setScreenContent(viewModel: LlmChatViewModel) {
         composeTestRule.setContent {
             MaterialTheme {
