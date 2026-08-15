@@ -1,4 +1,4 @@
-package com.dsv.llm_demo.ui.llmchat
+package com.dsv.llm_demo.ui.llmchat.components
 
 import android.annotation.SuppressLint
 import android.webkit.WebChromeClient
