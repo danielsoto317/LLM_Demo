@@ -11,6 +11,9 @@
       <SelectionState runConfigName="Tests in 'com.dsv.llm_demo'">
         <option name="selectionMode" value="DROPDOWN" />
       </SelectionState>
+      <SelectionState runConfigName="LlmChatScreenTest">
+        <option name="selectionMode" value="DROPDOWN" />
+      </SelectionState>
     </selectionStates>
   </component>
 </project>
