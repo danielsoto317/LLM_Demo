@@ -1,6 +1,5 @@
 package com.dsv.llm_demo.ui.llmchat
 
-import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -27,6 +26,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.dsv.llm_demo.data.model.ChatMessage
+import com.dsv.llm_demo.ui.llmchat.components.CodePreviewDialog
 import com.dsv.llm_demo.util.CodeExtractor
 import dev.jeziellago.compose.markdowntext.MarkdownText
 

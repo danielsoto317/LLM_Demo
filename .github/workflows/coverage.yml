@@ -2,9 +2,9 @@ name: JaCoCo Code Coverage
 
 on:
   pull_request:
-    branches: ["master"]
+    branches: [ "main", "master", "develop" ] # Ensure this includes your target branch
 
-# Required permissions for posting PR comments
+# Required permissions for posting comments on Pull Requests
 permissions:
   contents: read
   pull-requests: write
@@ -45,12 +45,12 @@ jobs:
 
       # Parses the generated XML report and posts a comment on the PR
       - name: Post JaCoCo Coverage Comment
-        uses: madrapps/jacoco-coverage-report@v1.6.1
+        uses: madrapps/jacoco-report@v1.8.0
         if: always() # Ensures comment posts even if test assertions fail
         with:
-          paths: ${{ github.workspace }}/app/build/reports/jacoco/mergedCoverageReport/mergedCoverageReport.xml # Adjust 'app/' if your module name is different
+          paths: ${{ github.workspace }}/app/build/reports/jacoco/mergedCoverageReport/mergedCoverageReport.xml
           token: ${{ secrets.GITHUB_TOKEN }}
           min-coverage-overall: 50
-          min-coverage-changed-files: 70
+          min-coverage-changed-lines: 70
           title: "📊 JaCoCo Code Coverage Report"
           update-comment: true
