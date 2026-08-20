@@ -8,6 +8,7 @@ material = "1.14.0"
 
 ksp = "2.1.0-1.0.29"
 hilt = "2.59.2"
+activityCompose = "1.9.3"
 composeBom = "2024.10.01"
 lifecycle = "2.8.7"
 navigation = "2.8.5"
@@ -27,6 +28,7 @@ testCore = "1.5.0"
 mockk = "1.13.13"
 coroutines = "1.9.0"
 fragment = "1.8.5"
+camerax = "1.4.1"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -38,6 +40,8 @@ androidx-junit = { group = "androidx.test.ext", name = "junit", version.ref = "j
 androidx-espresso-core = { group = "androidx.test.espresso", name = "espresso-core", version.ref = "espressoCore" }
 androidx-test-runner = { group = "androidx.test", name = "runner", version.ref = "testRunner" }
 androidx-test-core = { group = "androidx.test", name = "core", version.ref = "testCore" }
+
+androidx-activity-compose = { group = "androidx.activity", name = "activity-compose", version.ref = "activityCompose" }
 
 compose-bom = { group = "androidx.compose", name = "compose-bom", version.ref = "composeBom" }
 compose-ui = { group = "androidx.compose.ui", name = "ui" }
@@ -73,6 +77,12 @@ compose-ui-test-manifest = { group = "androidx.compose.ui", name = "ui-test-mani
 # Others
 androidx-material-icons-extended = { group = "androidx.compose.material", name = "material-icons-extended" }
 markdown-text = { group = "com.github.jeziellago", name = "compose-markdown", version.ref = "markdownText"}
+
+# CameraX (in-app camera capture)
+camerax-core = { group = "androidx.camera", name = "camera-core", version.ref = "camerax" }
+camerax-camera2 = { group = "androidx.camera", name = "camera-camera2", version.ref = "camerax" }
+camerax-lifecycle = { group = "androidx.camera", name = "camera-lifecycle", version.ref = "camerax" }
+camerax-view = { group = "androidx.camera", name = "camera-view", version.ref = "camerax" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

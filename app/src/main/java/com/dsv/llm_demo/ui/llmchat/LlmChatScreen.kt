@@ -1,5 +1,11 @@
 package com.dsv.llm_demo.ui.llmchat
 
+import android.Manifest
+import android.content.ActivityNotFoundException
+import android.content.Intent
+import android.content.pm.PackageManager
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -21,31 +27,38 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
+import androidx.core.net.toUri
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.dsv.llm_demo.data.model.ChatMessage
+import com.dsv.llm_demo.ui.llmchat.components.CameraCaptureDialog
 import com.dsv.llm_demo.ui.llmchat.components.CodePreviewDialog
 import com.dsv.llm_demo.util.CodeExtractor
 import dev.jeziellago.compose.markdowntext.MarkdownText
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun LlmChatScreen(
-    viewModel: LlmChatViewModel
-) {
+fun LlmChatScreen(viewModel: LlmChatViewModel) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val listState = rememberLazyListState()
+    val context = LocalContext.current
 
-    val lastMessageText = uiState.messages.lastOrNull()?.text.orEmpty()
+    val lastMessageText =
+        uiState.messages
+            .lastOrNull()
+            ?.text
+            .orEmpty()
 
     LaunchedEffect(uiState.messages.size, uiState.isLoading, lastMessageText) {
         val totalItems = uiState.messages.size + if (uiState.isLoading) 1 else 0
         if (totalItems > 0) {
             listState.scrollToItem(
                 index = totalItems - 1,
-                scrollOffset = 100_000
+                scrollOffset = 100_000,
             )
         }
     }
@@ -57,8 +70,55 @@ fun LlmChatScreen(
     previewCodeState.value?.let { code ->
         CodePreviewDialog(
             htmlCode = code,
-            onDismissRequest = { previewCodeState.value = null }
+            onDismissRequest = { previewCodeState.value = null },
         )
+    }
+
+    var showCameraDialog by remember { mutableStateOf(false) }
+    val cameraPermissionLauncher =
+        rememberLauncherForActivityResult(
+            ActivityResultContracts.RequestPermission(),
+        ) { granted -> if (granted) showCameraDialog = true }
+
+    if (showCameraDialog) {
+        CameraCaptureDialog(
+            onPhotoCaptured = { bytes ->
+                showCameraDialog = false
+                viewModel.onPhotoCaptured(bytes)
+            },
+            onDismissRequest = { showCameraDialog = false },
+        )
+    }
+
+    LaunchedEffect(viewModel) {
+        viewModel.toolActions.collect { action ->
+            when (action) {
+                ToolAction.OpenCamera -> {
+                    val hasCameraPermission =
+                        ContextCompat.checkSelfPermission(
+                            context,
+                            Manifest.permission.CAMERA,
+                        ) == PackageManager.PERMISSION_GRANTED
+
+                    if (hasCameraPermission) {
+                        showCameraDialog = true
+                    } else {
+                        cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
+                    }
+                }
+
+                is ToolAction.SendEmail -> {
+                    val emailIntent =
+                        Intent(Intent.ACTION_SENDTO, "mailto:".toUri()).apply {
+                            putExtra(Intent.EXTRA_EMAIL, arrayOf(action.to))
+                            putExtra(Intent.EXTRA_SUBJECT, action.subject)
+                            putExtra(Intent.EXTRA_TEXT, action.body)
+                        }
+                    runCatching { context.startActivity(emailIntent) }
+                        .onFailure { if (it !is ActivityNotFoundException) throw it }
+                }
+            }
+        }
     }
 
     Scaffold(
@@ -67,40 +127,41 @@ fun LlmChatScreen(
         topBar = {
             Surface(
                 shadowElevation = 4.dp,
-                color = MaterialTheme.colorScheme.surface
+                color = MaterialTheme.colorScheme.surface,
             ) {
                 Column {
                     TopAppBar(
                         title = {
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                                horizontalArrangement = Arrangement.spacedBy(12.dp),
                             ) {
                                 Surface(
                                     shape = CircleShape,
                                     color = MaterialTheme.colorScheme.primaryContainer,
-                                    modifier = Modifier.size(38.dp)
+                                    modifier = Modifier.size(38.dp),
                                 ) {
                                     Box(contentAlignment = Alignment.Center) {
                                         Icon(
                                             imageVector = Icons.Default.SmartToy,
                                             contentDescription = null,
                                             tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                                            modifier = Modifier.size(22.dp)
+                                            modifier = Modifier.size(22.dp),
                                         )
                                     }
                                 }
                                 Column {
                                     Text(
                                         text = "LLM Assistant",
-                                        style = MaterialTheme.typography.titleLarge
+                                        style = MaterialTheme.typography.titleLarge,
                                     )
                                 }
                             }
                         },
-                        colors = TopAppBarDefaults.topAppBarColors(
-                            containerColor = Color.Transparent
-                        )
+                        colors =
+                            TopAppBarDefaults.topAppBarColors(
+                                containerColor = Color.Transparent,
+                            ),
                     )
 
                     // Configuration bar for LLM model and reasoning effort
@@ -109,11 +170,11 @@ fun LlmChatScreen(
                         selectedEffort = uiState.selectedReasoningEffort,
                         isLoading = uiState.isLoading,
                         onModelSelected = viewModel::onModelSelected,
-                        onEffortSelected = viewModel::onReasoningEffortSelected
+                        onEffortSelected = viewModel::onReasoningEffortSelected,
                     )
 
                     HorizontalDivider(
-                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f)
+                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f),
                     )
                 }
             }
@@ -123,26 +184,28 @@ fun LlmChatScreen(
                 text = uiState.inputText,
                 isLoading = uiState.isLoading,
                 onTextChanged = viewModel::onInputTextChanged,
-                onSendClicked = viewModel::sendMessage
+                onSendClicked = viewModel::sendMessage,
             )
-        }
+        },
     ) { paddingValues ->
         LazyColumn(
             state = listState,
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-                .padding(horizontal = 14.dp),
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues)
+                    .padding(horizontal = 14.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp),
-            contentPadding = PaddingValues(vertical = 16.dp)
+            contentPadding = PaddingValues(vertical = 16.dp),
         ) {
             items(
                 items = uiState.messages,
-                key = { message -> message.id }
+                key = { message -> message.id },
             ) { message ->
                 ChatMessageBubble(
                     message = message,
-                    onOpenPreview = { code -> previewCodeState.value = code })
+                    onOpenPreview = { code -> previewCodeState.value = code },
+                )
             }
 
             if (uiState.isLoading) {
@@ -160,27 +223,29 @@ fun ModelAndEffortSelectors(
     selectedEffort: String,
     isLoading: Boolean,
     onModelSelected: (String) -> Unit,
-    onEffortSelected: (String) -> Unit
+    onEffortSelected: (String) -> Unit,
 ) {
     var expandedModelMenu by remember { mutableStateOf(false) }
     var expandedEffortMenu by remember { mutableStateOf(false) }
 
-    val availableModels = listOf(
-        "openai/gpt-4o-mini",
-        "openai/gpt-4o",
-        "openai/o3-mini",
-        "anthropic/claude-4.5-opus",
-        "google/gemini-2.5-flash-lite"
-    )
+    val availableModels =
+        listOf(
+            "openai/gpt-4o-mini",
+            "openai/gpt-4o",
+            "openai/o3-mini",
+            "anthropic/claude-4.5-opus",
+            "google/gemini-2.5-flash-lite",
+        )
 
     val effortOptions = listOf("none", "low", "medium", "high")
 
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 4.dp),
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 4.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalAlignment = Alignment.CenterVertically
+        verticalAlignment = Alignment.CenterVertically,
     ) {
         // Model Selection Dropdown
         Box {
@@ -188,11 +253,11 @@ fun ModelAndEffortSelectors(
                 onClick = { if (!isLoading) expandedModelMenu = true },
                 label = { Text(selectedModel.split("/").lastOrNull() ?: selectedModel) },
                 trailingIcon = { Icon(Icons.Default.ArrowDropDown, contentDescription = null) },
-                enabled = !isLoading
+                enabled = !isLoading,
             )
             DropdownMenu(
                 expanded = expandedModelMenu,
-                onDismissRequest = { expandedModelMenu = false }
+                onDismissRequest = { expandedModelMenu = false },
             ) {
                 availableModels.forEach { model ->
                     DropdownMenuItem(
@@ -200,7 +265,7 @@ fun ModelAndEffortSelectors(
                         onClick = {
                             onModelSelected(model)
                             expandedModelMenu = false
-                        }
+                        },
                     )
                 }
             }
@@ -212,11 +277,11 @@ fun ModelAndEffortSelectors(
                 onClick = { if (!isLoading) expandedEffortMenu = true },
                 label = { Text("Effort: ${selectedEffort.replaceFirstChar { it.uppercase() }}") },
                 trailingIcon = { Icon(Icons.Default.ArrowDropDown, contentDescription = null) },
-                enabled = !isLoading
+                enabled = !isLoading,
             )
             DropdownMenu(
                 expanded = expandedEffortMenu,
-                onDismissRequest = { expandedEffortMenu = false }
+                onDismissRequest = { expandedEffortMenu = false },
             ) {
                 effortOptions.forEach { effort ->
                     DropdownMenuItem(
@@ -224,7 +289,7 @@ fun ModelAndEffortSelectors(
                         onClick = {
                             onEffortSelected(effort)
                             expandedEffortMenu = false
-                        }
+                        },
                     )
                 }
             }
@@ -236,51 +301,56 @@ fun ModelAndEffortSelectors(
 fun ChatMessageBubble(
     message: ChatMessage,
     modifier: Modifier = Modifier,
-    onOpenPreview: (String) -> Unit = {}
+    onOpenPreview: (String) -> Unit = {},
 ) {
     val isUser = message.isFromUser
 
-    val bubbleColor = if (isUser) {
-        MaterialTheme.colorScheme.primary
-    } else {
-        MaterialTheme.colorScheme.surfaceContainerHigh
-    }
+    val bubbleColor =
+        if (isUser) {
+            MaterialTheme.colorScheme.primary
+        } else {
+            MaterialTheme.colorScheme.surfaceContainerHigh
+        }
 
-    val contentColor = if (isUser) {
-        MaterialTheme.colorScheme.onPrimary
-    } else {
-        MaterialTheme.colorScheme.onSurface
-    }
+    val contentColor =
+        if (isUser) {
+            MaterialTheme.colorScheme.onPrimary
+        } else {
+            MaterialTheme.colorScheme.onSurface
+        }
 
-    val bubbleShape = if (isUser) {
-        RoundedCornerShape(topStart = 18.dp, topEnd = 18.dp, bottomStart = 18.dp, bottomEnd = 4.dp)
-    } else {
-        RoundedCornerShape(topStart = 18.dp, topEnd = 18.dp, bottomStart = 4.dp, bottomEnd = 18.dp)
-    }
+    val bubbleShape =
+        if (isUser) {
+            RoundedCornerShape(topStart = 18.dp, topEnd = 18.dp, bottomStart = 18.dp, bottomEnd = 4.dp)
+        } else {
+            RoundedCornerShape(topStart = 18.dp, topEnd = 18.dp, bottomStart = 4.dp, bottomEnd = 18.dp)
+        }
 
-    val runnableCode = remember(message.text) {
-        if (!isUser) CodeExtractor.extractWebCode(message.text) else null
-    }
+    val runnableCode =
+        remember(message.text) {
+            if (!isUser) CodeExtractor.extractWebCode(message.text) else null
+        }
 
     Row(
         modifier = modifier.fillMaxWidth(),
         horizontalArrangement = if (isUser) Arrangement.End else Arrangement.Start,
-        verticalAlignment = Alignment.Bottom
+        verticalAlignment = Alignment.Bottom,
     ) {
         if (!isUser) {
             Surface(
                 shape = CircleShape,
                 color = MaterialTheme.colorScheme.secondaryContainer,
-                modifier = Modifier
-                    .padding(end = 8.dp, bottom = 2.dp)
-                    .size(28.dp)
+                modifier =
+                    Modifier
+                        .padding(end = 8.dp, bottom = 2.dp)
+                        .size(28.dp),
             ) {
                 Box(contentAlignment = Alignment.Center) {
                     Icon(
                         imageVector = Icons.Default.SmartToy,
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.onSecondaryContainer,
-                        modifier = Modifier.size(16.dp)
+                        modifier = Modifier.size(16.dp),
                     )
                 }
             }
@@ -291,14 +361,15 @@ fun ChatMessageBubble(
                 color = bubbleColor,
                 shape = bubbleShape,
                 shadowElevation = 1.dp,
-                modifier = Modifier
-                    .widthIn(max = 280.dp)
-                    .semantics { contentDescription = message.text }
+                modifier =
+                    Modifier
+                        .widthIn(max = 280.dp)
+                        .semantics { contentDescription = message.text },
             ) {
                 MarkdownText(
                     markdown = message.text,
                     style = MaterialTheme.typography.bodyMedium.copy(color = contentColor),
-                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp)
+                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
                 )
             }
 
@@ -307,17 +378,17 @@ fun ChatMessageBubble(
                 Spacer(modifier = Modifier.height(6.dp))
                 ElevatedButton(
                     onClick = { onOpenPreview(code) },
-                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
+                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
                 ) {
                     Icon(
                         imageVector = Icons.Default.PlayArrow,
                         contentDescription = null,
-                        modifier = Modifier.size(18.dp)
+                        modifier = Modifier.size(18.dp),
                     )
                     Spacer(modifier = Modifier.width(6.dp))
                     Text(
                         text = "Open Interactive App",
-                        style = MaterialTheme.typography.labelMedium
+                        style = MaterialTheme.typography.labelMedium,
                     )
                 }
             }
@@ -326,27 +397,26 @@ fun ChatMessageBubble(
 }
 
 @Composable
-fun LlmLoadingBubble(
-    modifier: Modifier = Modifier
-) {
+fun LlmLoadingBubble(modifier: Modifier = Modifier) {
     Row(
         modifier = modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.Start,
-        verticalAlignment = Alignment.Bottom
+        verticalAlignment = Alignment.Bottom,
     ) {
         Surface(
             shape = CircleShape,
             color = MaterialTheme.colorScheme.secondaryContainer,
-            modifier = Modifier
-                .padding(end = 8.dp, bottom = 2.dp)
-                .size(28.dp)
+            modifier =
+                Modifier
+                    .padding(end = 8.dp, bottom = 2.dp)
+                    .size(28.dp),
         ) {
             Box(contentAlignment = Alignment.Center) {
                 Icon(
                     imageVector = Icons.Default.SmartToy,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.onSecondaryContainer,
-                    modifier = Modifier.size(16.dp)
+                    modifier = Modifier.size(16.dp),
                 )
             }
         }
@@ -354,16 +424,16 @@ fun LlmLoadingBubble(
         Surface(
             color = MaterialTheme.colorScheme.surfaceContainerHigh,
             shape = RoundedCornerShape(topStart = 18.dp, topEnd = 18.dp, bottomStart = 4.dp, bottomEnd = 18.dp),
-            shadowElevation = 1.dp
+            shadowElevation = 1.dp,
         ) {
             Box(
                 modifier = Modifier.padding(horizontal = 18.dp, vertical = 12.dp),
-                contentAlignment = Alignment.Center
+                contentAlignment = Alignment.Center,
             ) {
                 CircularProgressIndicator(
                     modifier = Modifier.size(18.dp),
                     strokeWidth = 2.5.dp,
-                    color = MaterialTheme.colorScheme.primary
+                    color = MaterialTheme.colorScheme.primary,
                 )
             }
         }
@@ -375,25 +445,26 @@ fun ChatInputField(
     text: String,
     isLoading: Boolean,
     onTextChanged: (String) -> Unit,
-    onSendClicked: () -> Unit
+    onSendClicked: () -> Unit,
 ) {
     Surface(
         color = MaterialTheme.colorScheme.surface,
         shadowElevation = 8.dp,
-        modifier = Modifier.fillMaxWidth()
+        modifier = Modifier.fillMaxWidth(),
     ) {
         Column {
             HorizontalDivider(
-                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f)
+                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f),
             )
             Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 12.dp, vertical = 8.dp)
-                    .navigationBarsPadding()
-                    .imePadding(),
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 12.dp, vertical = 8.dp)
+                        .navigationBarsPadding()
+                        .imePadding(),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 TextField(
                     value = text,
@@ -403,37 +474,39 @@ fun ChatInputField(
                         Text(
                             text = if (isLoading) "Waiting for response..." else "Type a message...",
                             style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
                         )
                     },
                     modifier = Modifier.weight(1f),
                     shape = RoundedCornerShape(24.dp),
                     maxLines = 4,
-                    colors = TextFieldDefaults.colors(
-                        focusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                        unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                        disabledContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.5f),
-                        focusedIndicatorColor = Color.Transparent,
-                        unfocusedIndicatorColor = Color.Transparent,
-                        disabledIndicatorColor = Color.Transparent
-                    )
+                    colors =
+                        TextFieldDefaults.colors(
+                            focusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                            unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                            disabledContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.5f),
+                            focusedIndicatorColor = Color.Transparent,
+                            unfocusedIndicatorColor = Color.Transparent,
+                            disabledIndicatorColor = Color.Transparent,
+                        ),
                 )
 
                 IconButton(
                     onClick = onSendClicked,
                     enabled = text.isNotBlank() && !isLoading,
-                    colors = IconButtonDefaults.filledIconButtonColors(
-                        containerColor = MaterialTheme.colorScheme.primary,
-                        contentColor = MaterialTheme.colorScheme.onPrimary,
-                        disabledContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                        disabledContentColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
-                    ),
-                    modifier = Modifier.size(44.dp)
+                    colors =
+                        IconButtonDefaults.filledIconButtonColors(
+                            containerColor = MaterialTheme.colorScheme.primary,
+                            contentColor = MaterialTheme.colorScheme.onPrimary,
+                            disabledContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                            disabledContentColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
+                        ),
+                    modifier = Modifier.size(44.dp),
                 ) {
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.Send,
                         contentDescription = "Send message",
-                        modifier = Modifier.size(20.dp)
+                        modifier = Modifier.size(20.dp),
                     )
                 }
             }

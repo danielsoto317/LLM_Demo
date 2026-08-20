@@ -31,7 +31,7 @@ android {
         buildConfigField(
             "String",
             "OPENROUTER_API_KEY",
-            "\"${properties.getProperty("OPENROUTER_API_KEY") ?: ""}\""
+            "\"${properties.getProperty("OPENROUTER_API_KEY") ?: ""}\"",
         )
     }
 
@@ -54,7 +54,7 @@ android {
             isMinifyEnabled = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
-                "proguard-rules.pro"
+                "proguard-rules.pro",
             )
         }
     }
@@ -85,6 +85,7 @@ dependencies {
     implementation(libs.compose.ui)
     implementation(libs.compose.material3)
     implementation(libs.compose.preview)
+    implementation(libs.androidx.activity.compose)
 
     // Lifecycle
     implementation(libs.lifecycle.runtime.compose)
@@ -130,6 +131,12 @@ dependencies {
     // OTHERS
     implementation(libs.androidx.material.icons.extended)
     implementation(libs.markdown.text)
+
+    // CameraX (in-app camera capture)
+    implementation(libs.camerax.core)
+    implementation(libs.camerax.camera2)
+    implementation(libs.camerax.lifecycle)
+    implementation(libs.camerax.view)
 }
 
 detekt {
@@ -167,47 +174,51 @@ tasks.register<JacocoReport>("mergedCoverageReport") {
         html.required.set(true)
     }
 
-    val fileFilter = listOf(
-        "**/R.class",
-        "**/R$*.class",
-        "**/BuildConfig.*",
-        "**/Manifest*.*",
-        "**/*Test*.*",
-        "android/**/*.*",
-        "**/*Mapper*.*",
-        "**/*\$ViewInjector*.*",
-        "**/*\$ViewBinder*.*",
-        "**/hilt_aggregated_deps/**",
-        "**/dagger/**",
-        "**/*Hilt*.*",
-        "**/*_Factory*.*",
-        "**/*_MembersInjector*.*",
-        "**/*_HiltModules*.*",
-        "**/*_Provide*Factory*.*"
-    )
+    val fileFilter =
+        listOf(
+            "**/R.class",
+            "**/R$*.class",
+            "**/BuildConfig.*",
+            "**/Manifest*.*",
+            "**/*Test*.*",
+            "android/**/*.*",
+            "**/*Mapper*.*",
+            "**/*\$ViewInjector*.*",
+            "**/*\$ViewBinder*.*",
+            "**/hilt_aggregated_deps/**",
+            "**/dagger/**",
+            "**/*Hilt*.*",
+            "**/*_Factory*.*",
+            "**/*_MembersInjector*.*",
+            "**/*_HiltModules*.*",
+            "**/*_Provide*Factory*.*",
+        )
 
-    val buildDir = project.layout.buildDirectory.get().asFile
+    val buildDir =
+        project.layout.buildDirectory
+            .get()
+            .asFile
 
     classDirectories.setFrom(
         fileTree("$buildDir/intermediates/built_in_kotlinc/debug/compileDebugKotlin/classes") {
             include("com/dsv/llm_demo/ui/**")
             exclude(fileFilter)
-        }
+        },
     )
 
     sourceDirectories.setFrom(
         files(
             "${project.projectDir}/src/main/java",
-            "${project.projectDir}/src/main/kotlin"
-        )
+            "${project.projectDir}/src/main/kotlin",
+        ),
     )
 
     executionData.setFrom(
         fileTree(buildDir) {
             include(
                 "outputs/unit_test_code_coverage/debugUnitTest/testDebugUnitTest.exec",
-                "outputs/code_coverage/debugAndroidTest/connected/*/*.ec"
+                "outputs/code_coverage/debugAndroidTest/connected/*/*.ec",
             )
-        }
+        },
     )
 }
