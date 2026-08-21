@@ -35,7 +35,7 @@ class LlmRepositoryImpl
                         You are a helpful AI assistant.
                         When requested to build web apps, interactive tools, or games (such as Tic-Tac-Toe), always provide self-contained, working HTML/JS code wrapped in standard ```html or ```js code blocks so that the app can display an interactive preview to the user.
                         Use the open_camera tool when the user asks you to look at, describe, or identify something in front of them (for example "what is this?" or "describe what's in front of me").
-                        Use the send_email tool when the user asks you to send an email. If they haven't given you a recipient address, ask for one instead of calling the tool.
+                        Use the send_email tool when the user asks you to send an email. If they haven't given you a recipient address, or subject, or body, use it anyway with those fields empty.
                         """.trimIndent(),
                     ),
             )
@@ -62,7 +62,7 @@ class LlmRepositoryImpl
                             name = "send_email",
                             description =
                                 "Opens the device's email app with a new message pre-filled with the " +
-                                    "given recipient, subject, and body.",
+                                    "given recipient, subject, and body, some of the fields may be empty.",
                             parameters =
                                 JsonObject().apply {
                                     addProperty("type", "object")
@@ -156,27 +156,28 @@ class LlmRepositoryImpl
                         if (line.startsWith("data: ")) {
                             val data = line.removePrefix("data: ").trim()
                             if (data == "[DONE]") return@forEach
-                            runCatching {
-                                val chunk = gson.fromJson(data, ChatCompletionChunkResponse::class.java)
-                                val choice = chunk.choices?.firstOrNull()
+                            val chunk =
+                                runCatching {
+                                    gson.fromJson(data, ChatCompletionChunkResponse::class.java)
+                                }.getOrNull()
+                            val choice = chunk?.choices?.firstOrNull()
 
-                                val textDelta = choice?.delta?.content
-                                if (!textDelta.isNullOrEmpty()) {
-                                    emit(LlmStreamEvent.TextDelta(textDelta))
-                                }
+                            val textDelta = choice?.delta?.content
+                            if (!textDelta.isNullOrEmpty()) {
+                                emit(LlmStreamEvent.TextDelta(textDelta))
+                            }
 
-                                choice?.delta?.toolCalls?.forEach { toolCallDelta ->
-                                    toolCallDelta.function?.name?.let { name ->
-                                        toolCallNames[toolCallDelta.index] = name
-                                    }
-                                    toolCallDelta.function?.arguments?.let { argsFragment ->
-                                        toolCallArgs.getOrPut(toolCallDelta.index) { StringBuilder() }.append(argsFragment)
-                                    }
+                            choice?.delta?.toolCalls?.forEach { toolCallDelta ->
+                                toolCallDelta.function?.name?.let { name ->
+                                    toolCallNames[toolCallDelta.index] = name
                                 }
+                                toolCallDelta.function?.arguments?.let { argsFragment ->
+                                    toolCallArgs.getOrPut(toolCallDelta.index) { StringBuilder() }.append(argsFragment)
+                                }
+                            }
 
-                                if (choice?.finishReason != null) {
-                                    finalizeToolCalls()
-                                }
+                            if (choice?.finishReason != null) {
+                                finalizeToolCalls()
                             }
                         }
                     }

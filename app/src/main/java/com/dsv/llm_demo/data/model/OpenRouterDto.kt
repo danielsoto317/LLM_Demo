@@ -10,7 +10,7 @@ data class ChatCompletionRequest(
     @SerializedName("model") val model: String,
     @SerializedName("messages") val messages: List<ChatMessageDto>,
     @SerializedName("stream") val stream: Boolean = true,
-    @SerializedName("reasoning") val reasoningEffort: String? = null,
+    @SerializedName("reasoning_effort") val reasoningEffort: String? = null,
     @SerializedName("tools") val tools: List<ToolDefinition>? = null,
 )
 

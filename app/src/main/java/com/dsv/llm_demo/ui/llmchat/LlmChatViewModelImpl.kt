@@ -21,6 +21,8 @@ import javax.inject.Inject
 
 private const val VISION_FOLLOWUP_MODEL = "openai/gpt-4o-mini"
 
+private fun JsonObject.stringOrNull(key: String): String? = get(key)?.takeIf { it.isJsonPrimitive }?.asString
+
 @HiltViewModel
 class LlmChatViewModelImpl
     @Inject
@@ -75,7 +77,12 @@ class LlmChatViewModelImpl
                     java.util.Base64
                         .getEncoder()
                         .encodeToString(imageBytes)
-            val photoMsg = ChatMessage(text = "📷 Photo sent", isFromUser = true, imageDataUri = dataUri)
+            val photoMsg =
+                ChatMessage(
+                    text = "Attached is the photo captured from the camera. Please describe what you see in detail.",
+                    isFromUser = true,
+                    imageDataUri = dataUri,
+                )
             val updatedMessages = _uiState.value.messages + photoMsg
 
             _uiState.update {
@@ -135,18 +142,13 @@ class LlmChatViewModelImpl
                 }
                 "send_email" -> {
                     val args = runCatching { gson.fromJson(toolCall.argumentsJson, JsonObject::class.java) }.getOrNull()
-                    val to =
-                        args
-                            ?.get("to")
-                            ?.asString
-                            ?.trim()
-                            .orEmpty()
+                    val to = args?.stringOrNull("to")?.trim().orEmpty()
 
                     if (to.isBlank()) {
                         appendConfirmationMessage("I need a recipient email address before I can send that.")
                     } else {
-                        val subject = args?.get("subject")?.asString.orEmpty()
-                        val body = args?.get("body")?.asString.orEmpty()
+                        val subject = args?.stringOrNull("subject").orEmpty()
+                        val body = args?.stringOrNull("body").orEmpty()
                         _toolActions.send(ToolAction.SendEmail(to, subject, body))
                         appendConfirmationMessage("📧 Opening email app…")
                     }
