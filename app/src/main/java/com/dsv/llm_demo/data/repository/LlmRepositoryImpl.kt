@@ -122,7 +122,7 @@ class LlmRepositoryImpl
                     if (isReasoningModel && reasoningEffort != "none") {
                         reasoningEffort
                     } else {
-                        null
+                    null
                     }
 
                 val request =
