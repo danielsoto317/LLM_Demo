@@ -2,6 +2,7 @@ package com.dsv.llm_demo.data.repository
 
 import com.dsv.llm_demo.data.model.ChatMessage
 import com.dsv.llm_demo.data.model.LlmStreamEvent
+import com.dsv.llm_demo.data.model.Resource
 import kotlinx.coroutines.flow.Flow
 
 interface LlmRepository {
@@ -9,5 +10,5 @@ interface LlmRepository {
         history: List<ChatMessage>,
         model: String,
         reasoningEffort: String? = null,
-    ): Flow<LlmStreamEvent>
+    ): Flow<Resource<LlmStreamEvent>>
 }

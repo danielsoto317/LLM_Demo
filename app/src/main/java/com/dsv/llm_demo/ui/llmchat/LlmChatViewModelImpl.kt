@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.dsv.llm_demo.data.model.ChatMessage
 import com.dsv.llm_demo.data.model.LlmStreamEvent
+import com.dsv.llm_demo.data.model.Resource
 import com.dsv.llm_demo.data.repository.LlmRepository
 import com.google.gson.Gson
 import com.google.gson.JsonObject
@@ -12,7 +13,6 @@ import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -102,15 +102,21 @@ class LlmChatViewModelImpl
 
             repository
                 .streamLlmResponse(history, model)
-                .catch { error ->
-                    val errorMsg = ChatMessage(text = "Error: ${error.message}", isFromUser = false)
-                    _uiState.update {
-                        it.copy(messages = it.messages + errorMsg, isLoading = false)
-                    }
-                }.collect { event ->
-                    when (event) {
-                        is LlmStreamEvent.TextDelta -> appendTextDelta(assistantMsgId, event.text)
-                        is LlmStreamEvent.ToolCall -> handleToolCall(event)
+                .collect { resource ->
+                    when (resource) {
+                        is Resource.Loading -> Unit
+                        is Resource.Success ->
+                            when (val event = resource.data) {
+                                is LlmStreamEvent.TextDelta -> appendTextDelta(assistantMsgId, event.text)
+                                is LlmStreamEvent.ToolCall -> handleToolCall(event)
+                            }
+
+                        is Resource.Error -> {
+                            val errorMsg = ChatMessage(text = "Error: ${resource.error.message}", isFromUser = false)
+                            _uiState.update {
+                                it.copy(messages = it.messages + errorMsg, isLoading = false)
+                            }
+                        }
                     }
                 }
         }

@@ -6,6 +6,7 @@ import com.dsv.llm_demo.data.model.ChatMessage
 import com.dsv.llm_demo.data.model.ChatMessageDto
 import com.dsv.llm_demo.data.model.FunctionDefinition
 import com.dsv.llm_demo.data.model.LlmStreamEvent
+import com.dsv.llm_demo.data.model.Resource
 import com.dsv.llm_demo.data.model.ToolDefinition
 import com.dsv.llm_demo.data.model.multimodalContent
 import com.dsv.llm_demo.data.model.textContent
@@ -15,6 +16,7 @@ import com.google.gson.JsonArray
 import com.google.gson.JsonObject
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
 import javax.inject.Inject
@@ -102,8 +104,10 @@ class LlmRepositoryImpl
             history: List<ChatMessage>,
             model: String,
             reasoningEffort: String?,
-        ): Flow<LlmStreamEvent> =
+        ): Flow<Resource<LlmStreamEvent>> =
             flow {
+                emit(Resource.Loading)
+
                 // Map user/assistant chat history
                 val userHistoryDtos =
                     history.map { msg ->
@@ -144,7 +148,7 @@ class LlmRepositoryImpl
                         toolCallsFinalized = true
                         toolCallNames.forEach { (index, name) ->
                             val argsJson = toolCallArgs[index]?.toString()?.ifBlank { "{}" } ?: "{}"
-                            emit(LlmStreamEvent.ToolCall(name, argsJson))
+                            emit(Resource.Success(LlmStreamEvent.ToolCall(name, argsJson)))
                         }
                     }
                 }
@@ -164,7 +168,7 @@ class LlmRepositoryImpl
 
                             val textDelta = choice?.delta?.content
                             if (!textDelta.isNullOrEmpty()) {
-                                emit(LlmStreamEvent.TextDelta(textDelta))
+                                emit(Resource.Success(LlmStreamEvent.TextDelta(textDelta)))
                             }
 
                             choice?.delta?.toolCalls?.forEach { toolCallDelta ->
@@ -183,5 +187,6 @@ class LlmRepositoryImpl
                     }
                 }
                 finalizeToolCalls()
-            }.flowOn(Dispatchers.IO)
+            }.catch { error -> emit(Resource.Error(error)) }
+                .flowOn(Dispatchers.IO)
     }

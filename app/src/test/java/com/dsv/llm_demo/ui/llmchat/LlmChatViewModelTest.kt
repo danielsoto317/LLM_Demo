@@ -1,6 +1,7 @@
 package com.dsv.llm_demo.ui.llmchat
 
 import com.dsv.llm_demo.data.model.LlmStreamEvent
+import com.dsv.llm_demo.data.model.Resource
 import com.dsv.llm_demo.data.repository.LlmRepository
 import io.mockk.every
 import io.mockk.mockk
@@ -60,7 +61,7 @@ class LlmChatViewModelTest {
             val streamChunks = listOf("Kotlin is ", "a modern ", "programming language.")
             every { repository.streamLlmResponse(any(), any()) } returns
                 flowOf(
-                    *streamChunks.map { LlmStreamEvent.TextDelta(it) }.toTypedArray(),
+                    *streamChunks.map { Resource.Success(LlmStreamEvent.TextDelta(it)) }.toTypedArray(),
                 )
 
             viewModel.onInputTextChanged(userPrompt)
@@ -87,6 +88,21 @@ class LlmChatViewModelTest {
         }
 
     @Test
+    fun `sendMessage appends an error message when repository emits Resource Error`() =
+        runTest {
+            every { repository.streamLlmResponse(any(), any()) } returns
+                flowOf(Resource.Error(RuntimeException("network down")))
+
+            viewModel.onInputTextChanged("What is Kotlin?")
+            viewModel.sendMessage()
+            testDispatcher.scheduler.advanceUntilIdle()
+
+            val state = viewModel.uiState.value
+            assertFalse(state.isLoading)
+            assertTrue(state.messages.last().text.contains("network down"))
+        }
+
+    @Test
     fun `sendMessage does nothing when input text is blank`() {
         viewModel.onInputTextChanged("   ")
         viewModel.sendMessage()
@@ -100,7 +116,7 @@ class LlmChatViewModelTest {
         runTest {
             every { repository.streamLlmResponse(any(), any()) } returns
                 flowOf(
-                    LlmStreamEvent.ToolCall("open_camera", "{}"),
+                    Resource.Success(LlmStreamEvent.ToolCall("open_camera", "{}")),
                 )
 
             viewModel.onInputTextChanged("what's in front of me?")
@@ -123,9 +139,11 @@ class LlmChatViewModelTest {
         runTest {
             every { repository.streamLlmResponse(any(), any()) } returns
                 flowOf(
-                    LlmStreamEvent.ToolCall(
-                        "send_email",
-                        """{"to":"test@example.com","subject":"Hello","body":"Hi there"}""",
+                    Resource.Success(
+                        LlmStreamEvent.ToolCall(
+                            "send_email",
+                            """{"to":"test@example.com","subject":"Hello","body":"Hi there"}""",
+                        ),
                     ),
                 )
 
@@ -144,7 +162,7 @@ class LlmChatViewModelTest {
         runTest {
             every { repository.streamLlmResponse(any(), any()) } returns
                 flowOf(
-                    LlmStreamEvent.ToolCall("send_email", """{"subject":"Hello"}"""),
+                    Resource.Success(LlmStreamEvent.ToolCall("send_email", """{"subject":"Hello"}""")),
                 )
 
             viewModel.onInputTextChanged("send an email")
@@ -164,7 +182,7 @@ class LlmChatViewModelTest {
         runTest {
             every { repository.streamLlmResponse(any(), any()) } returns
                 flowOf(
-                    LlmStreamEvent.TextDelta("I see a cat."),
+                    Resource.Success(LlmStreamEvent.TextDelta("I see a cat.")),
                 )
 
             viewModel.onPhotoCaptured(byteArrayOf(1, 2, 3))
